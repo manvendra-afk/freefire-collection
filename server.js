@@ -19,13 +19,13 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure Multer Storage for Cloudinary
+// Corrected Multer Storage Configuration for Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'freefire_collections',
         resource_type: 'auto',
-        public_id: (req, file) => `${req.body.uid}-${Date.now()}`
+        public_id: (req, file) => `${file.fieldname}-${Date.now()}`
     }
 });
 
