@@ -12,11 +12,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
-// Verify environment variables
-if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.error("CRITICAL WARNING: Cloudinary environment variables are missing on Render!");
-}
-
 // Configure Cloudinary using environment variables from Render
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -24,14 +19,13 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure Multer Storage for Cloudinary
+// Configure Simplified Multer Storage for Cloudinary
 let upload;
 try {
     const storage = new CloudinaryStorage({
         cloudinary: cloudinary,
         params: {
             folder: 'freefire_collections',
-            allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'avi'],
             resource_type: 'auto'
         }
     });
@@ -96,7 +90,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.post('/api/upload', (req, res, next) => {
+app.post('/api/upload', (req, res) => {
     if (!upload) {
         return res.status(500).json({ error: "Upload system not initialized. Check Cloudinary environment variables on Render." });
     }
@@ -144,7 +138,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// GLOBAL ERROR HANDLER (Ensures Express never returns HTML error pages)
+// GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
     console.error("Unhandled Express Error:", err.stack);
     res.status(500).json({ error: "Internal Server Error: " + err.message });
