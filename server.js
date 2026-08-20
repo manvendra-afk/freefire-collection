@@ -19,13 +19,12 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Corrected Multer Storage Configuration for Cloudinary
+// Simplified storage configuration without custom public_id functions
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'freefire_collections',
-        resource_type: 'auto',
-        public_id: (req, file) => `${file.fieldname}-${Date.now()}`
+        resource_type: 'auto'
     }
 });
 
@@ -49,7 +48,7 @@ const MediaSchema = new mongoose.Schema({
     uid: { type: String, required: true, index: true },
     filename: String,
     fileUrl: String,
-    fileType: String, // 'image' or 'video'
+    fileType: String,
     uploadedAt: { type: Date, default: Date.now }
 });
 
@@ -96,15 +95,15 @@ app.post('/api/upload', upload.array('mediaFiles', 50), async (req, res) => {
         const mediaDocs = req.files.map(file => ({
             uid,
             filename: file.originalname,
-            fileUrl: file.path, // Cloudinary secure URL
+            fileUrl: file.path,
             fileType: file.mimetype.startsWith('video') ? 'video' : 'image'
         }));
 
         await Media.insertMany(mediaDocs);
         res.json({ message: "Files uploaded successfully!" });
     } catch (err) {
-        console.error("Upload error:", err);
-        res.status(500).json({ error: "Upload failed." });
+        console.error("Upload error details:", err);
+        res.status(500).json({ error: err.message || "Upload failed." });
     }
 });
 
