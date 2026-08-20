@@ -12,6 +12,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
+// Verify environment variables are loaded
+console.log("Cloudinary Config Check:");
+console.log("- Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME ? "Loaded OK" : "MISSING!");
+console.log("- API Key:", process.env.CLOUDINARY_API_KEY ? "Loaded OK" : "MISSING!");
+console.log("- API Secret:", process.env.CLOUDINARY_API_SECRET ? "Loaded OK" : "MISSING!");
+
 // Configure Cloudinary using environment variables from Render
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -22,10 +28,11 @@ cloudinary.config({
 // Configure Multer Storage for Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
-        folder: 'freefire_collections',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'avi'],
-        resource_type: 'auto'
+    params: async (req, file) => {
+        return {
+            folder: 'freefire_collections',
+            resource_type: 'auto'
+        };
     }
 });
 
@@ -86,26 +93,32 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.post('/api/upload', upload.array('mediaFiles', 50), async (req, res) => {
-    try {
-        const { uid } = req.body;
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: "No files uploaded." });
+app.post('/api/upload', (req, res) => {
+    upload.array('mediaFiles', 50)(req, res, async function (err) {
+        if (err) {
+            console.error("Multer/Cloudinary Upload Error:", err);
+            return res.status(500).json({ error: "Upload Middleware Error: " + err.message });
         }
+        try {
+            const { uid } = req.body;
+            if (!req.files || req.files.length === 0) {
+                return res.status(400).json({ error: "No files uploaded." });
+            }
 
-        const mediaDocs = req.files.map(file => ({
-            uid,
-            filename: file.originalname,
-            fileUrl: file.path,
-            fileType: file.mimetype.startsWith('video') ? 'video' : 'image'
-        }));
+            const mediaDocs = req.files.map(file => ({
+                uid,
+                filename: file.originalname,
+                fileUrl: file.path,
+                fileType: file.mimetype.startsWith('video') ? 'video' : 'image'
+            }));
 
-        await Media.insertMany(mediaDocs);
-        res.json({ message: "Files uploaded successfully!" });
-    } catch (err) {
-        console.error("Detailed Upload Error:", err);
-        res.status(500).json({ error: err.message || "Internal server upload error." });
-    }
+            await Media.insertMany(mediaDocs);
+            res.json({ message: "Files uploaded successfully!" });
+        } catch (dbErr) {
+            console.error("Database Insert Error:", dbErr);
+            res.status(500).json({ error: "Database Error: " + dbErr.message });
+        }
+    });
 });
 
 app.get('/api/collection/:uid', async (req, res) => {
