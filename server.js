@@ -22,16 +22,10 @@ cloudinary.config({
 // Configure Multer Storage for Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: async (req, file) => {
-        let resourceType = 'auto'; // Supports images and videos automatically
-        if (file.mimetype.startsWith('video')) {
-            resourceType = 'video';
-        }
-        return {
-            folder: 'freefire_collections',
-            resource_type: resourceType,
-            public_id: `${req.body.uid}-${Date.now()}`
-        };
+    params: {
+        folder: 'freefire_collections',
+        resource_type: 'auto',
+        public_id: (req, file) => `${req.body.uid}-${Date.now()}`
     }
 });
 
