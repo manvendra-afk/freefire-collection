@@ -22,7 +22,7 @@
         
         button.btn-upload { background: #ffaa00; color: #000; padding: 14px; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; }
         button.btn-upload:hover { background: #e09600; }
-        #status-msg { margin-top: 15px; text-align: center; font-weight: bold; font-size: 14px; }
+        #status-msg { margin-top: 15px; text-align: center; font-weight: bold; font-size: 14px; word-break: break-all; }
 
         @media (min-width: 600px) {
             body { padding: 20px; }
@@ -79,7 +79,14 @@
                     body: formData
                 });
                 
-                const result = await response.json();
+                const contentType = response.headers.get("content-type");
+                let result;
+                if (contentType && contentType.includes("application/json")) {
+                    result = await response.json();
+                } else {
+                    result = { error: await response.text() };
+                }
+
                 if (response.ok) {
                     statusMsg.style.color = "#55ff55";
                     statusMsg.innerText = "Success! Your collection has been updated.";
@@ -91,7 +98,7 @@
                 }
             } catch (err) {
                 statusMsg.style.color = "#ff5555";
-                statusMsg.innerText = "Network error during upload.";
+                statusMsg.innerText = "Network error: " + err.message;
             }
         }
 

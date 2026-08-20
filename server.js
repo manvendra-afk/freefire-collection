@@ -104,7 +104,6 @@ app.post('/api/upload', upload.array('mediaFiles', 50), async (req, res) => {
         res.json({ message: "Files uploaded successfully!" });
     } catch (err) {
         console.error("Detailed Upload Error:", err);
-        // Send the exact error message back to the frontend for visibility
         res.status(500).json({ error: err.message || "Internal server upload error." });
     }
 });
