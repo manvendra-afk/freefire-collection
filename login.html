@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Register - FF Collection Hub</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f111a; color: #ffffff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+        
+        .auth-container { background: #1a1d29; padding: 30px 20px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .auth-container h2 { text-align: center; margin-bottom: 20px; color: #ffaa00; font-size: 22px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; color: #aaa; font-size: 14px; }
+        .form-group input { width: 100%; padding: 14px; border-radius: 6px; border: 1px solid #333; background: #0f111a; color: #fff; font-size: 16px; outline: none; }
+        
+        .btn-submit { width: 100%; padding: 14px; background: #ffaa00; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; font-size: 16px; margin-top: 10px; }
+        .btn-submit:hover { background: #e09600; }
+        
+        .toggle-text { text-align: center; margin-top: 20px; color: #888; font-size: 14px; }
+        .toggle-text span { color: #ffaa00; cursor: pointer; font-weight: bold; }
+        .toggle-text span:hover { text-decoration: underline; }
+        #message { margin-top: 15px; text-align: center; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <h2 id="form-title">User Login</h2>
+        
+        <form id="authForm" onsubmit="handleAuth(event)">
+            <div class="form-group">
+                <label>Free Fire UID (Numbers Only)</label>
+                <input type="text" id="uid" placeholder="e.g. 12345678" pattern="\d+" title="UID must contain numbers only" required />
+            </div>
+            
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password" required />
+            </div>
+            
+            <button type="submit" class="btn-submit" id="submit-btn">Login</button>
+        </form>
+
+        <div id="message"></div>
+
+        <div class="toggle-text" id="toggle-container">
+            Don't have an account? <span onclick="switchMode()">Register here</span>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" style="color: #aaa; text-decoration: none; font-size: 13px;">&larr; Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        let isLoginMode = true;
+
+        function switchMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('form-title').innerText = isLoginMode ? "User Login" : "Create Account";
+            document.getElementById('submit-btn').innerText = isLoginMode ? "Login" : "Register";
+            document.getElementById('toggle-container').innerHTML = isLoginMode 
+                ? `Don't have an account? <span onclick="switchMode()">Register here</span>` 
+                : `Already have an account? <span onclick="switchMode()">Login here</span>`;
+            document.getElementById('message').innerText = "";
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault();
+            const uid = document.getElementById('uid').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const msgBox = document.getElementById('message');
+
+            if (!/^\d+$/.test(uid)) {
+                msgBox.style.color = "#ff5555";
+                msgBox.innerText = "UID must contain numbers only.";
+                return;
+            }
+
+            const endpoint = isLoginMode ? '/api/login' : '/api/register';
+            msgBox.style.color = "#ffaa00";
+            msgBox.innerText = "Processing...";
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    msgBox.style.color = "#55ff55";
+                    msgBox.innerText = data.message || "Success!";
+                    localStorage.setItem('ff_user_uid', uid);
+
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                } else {
+                    msgBox.style.color = "#ff5555";
+                    msgBox.innerText = data.error || "Authentication failed.";
+                }
+            } catch (err) {
+                msgBox.style.color = "#ff5555";
+                msgBox.innerText = "Network error occurred.";
+            }
+        }
+    </script>
+</body>
+</html>
