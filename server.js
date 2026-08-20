@@ -12,11 +12,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
-// Verify environment variables are loaded
-console.log("Cloudinary Config Check:");
-console.log("- Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME ? "Loaded OK" : "MISSING!");
-console.log("- API Key:", process.env.CLOUDINARY_API_KEY ? "Loaded OK" : "MISSING!");
-console.log("- API Secret:", process.env.CLOUDINARY_API_SECRET ? "Loaded OK" : "MISSING!");
+// Verify environment variables
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.error("CRITICAL WARNING: Cloudinary environment variables are missing on Render!");
+}
 
 // Configure Cloudinary using environment variables from Render
 cloudinary.config({
@@ -26,20 +25,24 @@ cloudinary.config({
 });
 
 // Configure Multer Storage for Cloudinary
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: async (req, file) => {
-        return {
+let upload;
+try {
+    const storage = new CloudinaryStorage({
+        cloudinary: cloudinary,
+        params: {
             folder: 'freefire_collections',
+            allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'avi'],
             resource_type: 'auto'
-        };
-    }
-});
+        }
+    });
 
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit per file
-});
+    upload = multer({ 
+        storage: storage,
+        limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit per file
+    });
+} catch (configErr) {
+    console.error("Failed to configure Cloudinary storage:", configErr);
+}
 
 // Database Connection (MongoDB Atlas)
 mongoose.connect('mongodb+srv://daujibasti1451_db_user:qfLnMKL34uS3UXfN@cluster0.5eysgyh.mongodb.net/freefire_collection?appName=Cluster0')
@@ -93,11 +96,14 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.post('/api/upload', (req, res) => {
+app.post('/api/upload', (req, res, next) => {
+    if (!upload) {
+        return res.status(500).json({ error: "Upload system not initialized. Check Cloudinary environment variables on Render." });
+    }
     upload.array('mediaFiles', 50)(req, res, async function (err) {
         if (err) {
             console.error("Multer/Cloudinary Upload Error:", err);
-            return res.status(500).json({ error: "Upload Middleware Error: " + err.message });
+            return res.status(500).json({ error: "Upload Error: " + err.message });
         }
         try {
             const { uid } = req.body;
@@ -136,6 +142,12 @@ app.get('/api/collection/:uid', async (req, res) => {
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// GLOBAL ERROR HANDLER (Ensures Express never returns HTML error pages)
+app.use((err, req, res, next) => {
+    console.error("Unhandled Express Error:", err.stack);
+    res.status(500).json({ error: "Internal Server Error: " + err.message });
 });
 
 const PORT = process.env.PORT || 3000;
