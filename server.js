@@ -19,11 +19,12 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Simplified storage configuration without custom public_id functions
+// Configure Multer Storage for Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'freefire_collections',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'avi'],
         resource_type: 'auto'
     }
 });
@@ -102,8 +103,9 @@ app.post('/api/upload', upload.array('mediaFiles', 50), async (req, res) => {
         await Media.insertMany(mediaDocs);
         res.json({ message: "Files uploaded successfully!" });
     } catch (err) {
-        console.error("Upload error details:", err);
-        res.status(500).json({ error: err.message || "Upload failed." });
+        console.error("Detailed Upload Error:", err);
+        // Send the exact error message back to the frontend for visibility
+        res.status(500).json({ error: err.message || "Internal server upload error." });
     }
 });
 
